@@ -1,0 +1,413 @@
+include <stdlib.h>
+
+// Structure of AVL Tree Node
+struct Node
+{
+    int data;
+    int height;
+    struct Node *left;
+    struct Node *right;
+};
+
+// Function Prototypes
+struct Node* createNode(int);
+int max(int, int);
+int getHeight(struct Node*);
+int getBalance(struct Node*);
+struct Node* leftRotate(struct Node*);
+struct Node* rightRotate(struct Node*);
+struct Node* insert(struct Node*, int);
+struct Node* deleteNode(struct Node*, int);
+struct Node* search(struct Node*, int);
+struct Node* minValueNode(struct Node*);
+void inorder(struct Node*);
+
+
+// Create a New Node
+struct Node* createNode(int value)
+{
+    struct Node* newNode;
+
+    newNode = (struct Node*)malloc(sizeof(struct Node));
+
+    if(newNode == NULL)
+    {
+        printf("\nMemory Allocation Failed!\n");
+        return NULL;
+    }
+
+    newNode->data = value;
+    newNode->height = 1;
+    newNode->left = NULL;
+    newNode->right = NULL;
+
+    return newNode;
+}
+
+// Return Maximum of Two Numbers
+int max(int a, int b)
+{
+    if(a > b)
+        return a;
+    else
+        return b;
+}
+
+// Get Height of a Node
+int getHeight(struct Node *root)
+{
+    if(root == NULL)
+        return 0;
+
+    return root->height;
+}
+
+// Calculate Balance Factor
+int getBalance(struct Node *root)
+{
+    if(root == NULL)
+        return 0;
+
+    return getHeight(root->left) - getHeight(root->right);
+}
+// Right Rotation (LL Rotation)
+struct Node* rightRotate(struct Node *parent)
+{
+    struct Node *child;
+    struct Node *temp;
+
+    child = parent->left;
+    temp = child->right;
+
+    // Perform Rotation
+    child->right = parent;
+    parent->left = temp;
+
+    // Update Heights
+    parent->height = 1 + max(getHeight(parent->left),
+                             getHeight(parent->right));
+
+    child->height = 1 + max(getHeight(child->left),
+                            getHeight(child->right));
+
+    // Return New Root
+    return child;
+}
+
+// Left Rotation (RR Rotation)
+struct Node* leftRotate(struct Node *parent)
+{
+    struct Node *child;
+    struct Node *temp;
+
+    child = parent->right;
+    temp = child->left;
+
+    // Perform Rotation
+    child->left = parent;
+    parent->right = temp;
+
+    // Update Heights
+    parent->height = 1 + max(getHeight(parent->left),
+                             getHeight(parent->right));
+
+    child->height = 1 + max(getHeight(child->left),
+                            getHeight(child->right));
+
+    // Return New Root
+    return child;
+}
+// Insert a Node into AVL Tree
+struct Node* insert(struct Node *root, int value)
+{
+    // Step 1: Perform Normal BST Insertion
+    if(root == NULL)
+        return createNode(value);
+
+    if(value < root->data)
+        root->left = insert(root->left, value);
+
+    else if(value > root->data)
+        root->right = insert(root->right, value);
+
+    else
+        return root;      // Duplicate values are not allowed
+
+    // Step 2: Update Height
+    root->height = 1 + max(getHeight(root->left),
+                           getHeight(root->right));
+
+    // Step 3: Calculate Balance Factor
+    int balance = getBalance(root);
+
+    // -----------------------------
+    // LL Rotation
+    // -----------------------------
+    if(balance > 1 && value < root->left->data)
+    {
+        return rightRotate(root);
+    }
+
+    // -----------------------------
+    // RR Rotation
+    // -----------------------------
+    if(balance < -1 && value > root->right->data)
+    {
+        return leftRotate(root);
+    }
+
+    // -----------------------------
+    // LR Rotation
+    // -----------------------------
+    if(balance > 1 && value > root->left->data)
+    {
+        root->left = leftRotate(root->left);
+        return rightRotate(root);
+    }
+
+    // -----------------------------
+    // RL Rotation
+    // -----------------------------
+    if(balance < -1 && value < root->right->data)
+    {
+        root->right = rightRotate(root->right);
+        return leftRotate(root);
+    }
+
+    return root;
+}
+// Find the Node with Minimum Value
+struct Node* minValueNode(struct Node *root)
+{
+    struct Node *current = root;
+
+    while(current != NULL && current->left != NULL)
+    {
+        current = current->left;
+    }
+
+    return current;
+}
+// Delete a Node from AVL Tree
+struct Node* deleteNode(struct Node *root, int value)
+{
+    if(root == NULL)
+        return root;
+
+    // Search for the node
+    if(value < root->data)
+    {
+        root->left = deleteNode(root->left, value);
+    }
+    else if(value > root->data)
+    {
+        root->right = deleteNode(root->right, value);
+    }
+    else
+    {
+        // Case 1 & 2 : Node has one child or no child
+
+        if(root->left == NULL || root->right == NULL)
+        {
+            struct Node *temp;
+
+            if(root->left != NULL)
+                temp = root->left;
+            else
+                temp = root->right;
+
+            // No Child
+            if(temp == NULL)
+            {
+                temp = root;
+                root = NULL;
+            }
+            else
+            {
+                // One Child
+                *root = *temp;
+            }
+
+            free(temp);
+        }
+
+        // Case 3 : Node has two children
+
+        else
+        {
+            struct Node *temp = minValueNode(root->right);
+
+            root->data = temp->data;
+
+            root->right = deleteNode(root->right, temp->data);
+        }
+    }
+
+    // Tree had only one node
+    if(root == NULL)
+        return root;
+
+    // Update Height
+    root->height = 1 + max(getHeight(root->left),
+                           getHeight(root->right));
+
+    // Get Balance Factor
+    int balance = getBalance(root);
+
+    // --------------------------
+    // LL Rotation
+    // --------------------------
+    if(balance > 1 &&
+       getBalance(root->left) >= 0)
+    {
+        return rightRotate(root);
+    }
+
+    // --------------------------
+    // LR Rotation
+    // --------------------------
+    if(balance > 1 &&
+       getBalance(root->left) < 0)
+    {
+        root->left = leftRotate(root->left);
+        return rightRotate(root);
+    }
+
+    // --------------------------
+    // RR Rotation
+    // --------------------------
+    if(balance < -1 &&
+       getBalance(root->right) <= 0)
+    {
+        return leftRotate(root);
+    }
+
+    // --------------------------
+    // RL Rotation
+    // --------------------------
+    if(balance < -1 &&
+       getBalance(root->right) > 0)
+    {
+        root->right = rightRotate(root->right);
+        return leftRotate(root);
+    }
+
+    return root;
+}
+// Search a Node in AVL Tree
+struct Node* search(struct Node *root, int key)
+{
+    if(root == NULL || root->data == key)
+        return root;
+
+    if(key < root->data)
+        return search(root->left, key);
+
+    return search(root->right, key);
+}
+// Inorder Traversal
+void inorder(struct Node *root)
+{
+    if(root != NULL)
+    {
+        inorder(root->left);
+        printf("%d ", root->data);
+        inorder(root->right);
+    }
+}
+
+int main()
+{
+    struct Node *root = NULL;
+    struct Node *result = NULL;
+
+    int choice;
+    int value;
+    int n;
+    int i;
+
+    printf("\n========================================");
+    printf("\n      AVL TREE IMPLEMENTATION");
+    printf("\n========================================");
+
+    printf("\n\nEnter the number of nodes: ");
+    scanf("%d",&n);
+
+    printf("\nEnter %d elements:\n",n);
+
+    for(i=1;i<=n;i++)
+    {
+        scanf("%d",&value);
+        root = insert(root,value);
+    }
+        do
+    {
+        printf("\n\n========== AVL MENU ==========\n");
+        printf("1. Insert\n");
+        printf("2. Delete\n");
+        printf("3. Search\n");
+        printf("4. Inorder Traversal\n");
+        printf("5. Exit\n");
+
+        printf("\nEnter your choice: ");
+        scanf("%d",&choice);
+
+        switch(choice)
+        {
+         case 1:
+
+                printf("\nEnter value to insert: ");
+                scanf("%d",&value);
+
+                root = insert(root,value);
+
+                printf("\nNode Inserted Successfully.\n");
+
+                break;
+         case 2:
+
+                printf("\nEnter value to delete: ");
+                scanf("%d",&value);
+
+                root = deleteNode(root,value);
+
+                printf("\nNode Deleted Successfully.\n");
+
+                break;
+         case 3:
+
+                printf("\nEnter value to search: ");
+                scanf("%d",&value);
+
+                result = search(root,value);
+
+                if(result != NULL)
+                    printf("\nElement Found.\n");
+                else
+                    printf("\nElement Not Found.\n");
+
+                break;
+                            case 4:
+
+                printf("\nInorder Traversal : ");
+
+                inorder(root);
+
+                printf("\n");
+
+                break;
+
+         case 5:
+
+                printf("\nThank You!\n");
+
+                break;
+         default:
+
+                printf("\nInvalid Choice!\n");
+        }
+
+    }while(choice!=5);
+
+    return 0;
+}
